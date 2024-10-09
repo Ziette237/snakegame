@@ -69,8 +69,8 @@
     </div>
 
     <!-- Include audio elements -->
-    <audio id="backgroundMusic" src="Felipe Ortiz.mp3" loop></audio>
-    <audio id="gameOverSound" src="gameover.wav"></audio>
+    <audio id="backgroundMusic" src="felipe_ortiz.mp3" preload="auto" loop></audio>
+    <audio id="gameOverSound" src="gameover.wav" preload="auto"></audio>
 
     <script>
         const canvas = document.getElementById('gameCanvas');
@@ -239,7 +239,10 @@
         function showGameOverScreen() {
             clearInterval(game);
             backgroundMusic.pause();
-            gameOverSound.play();
+            gameOverSound.currentTime = 0;
+            gameOverSound.play().catch(function(error) {
+                console.log('Game Over sound play was prevented:', error);
+            });
 
             // Remove event listeners
             document.removeEventListener('keydown', changeDirection);
@@ -261,7 +264,10 @@
 
         startButton.addEventListener('click', function() {
             startButton.style.display = 'none'; // Hide the start button
-            backgroundMusic.play().catch(function(error) {
+            backgroundMusic.currentTime = 0;
+            backgroundMusic.play().then(() => {
+                console.log('Background music started');
+            }).catch(function(error) {
                 console.log('Background music play was prevented:', error);
             });
             initGame();
@@ -280,7 +286,9 @@
 
             // Restart background music
             backgroundMusic.currentTime = 0;
-            backgroundMusic.play().catch(function(error) {
+            backgroundMusic.play().then(() => {
+                console.log('Background music restarted');
+            }).catch(function(error) {
                 console.log('Background music play was prevented:', error);
             });
 
