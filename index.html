@@ -4,21 +4,17 @@
     <meta charset="UTF-8">
     <title>Snake Game</title>
     <style>
-        canvas {
-            background: #fff;
-            display: block;
-            margin: 0 auto;
-            border: 1px solid #000;
-        }
         body {
             text-align: center;
             font-family: Arial, sans-serif;
             background-color: #eee;
             margin: 0;
             padding: 0;
+            overflow: hidden; /* Prevent scrolling */
         }
         #score {
             font-size: 24px;
+            margin: 10px 0;
         }
         #startButton {
             font-size: 24px;
@@ -27,54 +23,41 @@
         }
         #gameOverScreen {
             display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border: 2px solid #000;
+            border-radius: 10px;
         }
         #gameOverScreen h2 {
-            font-size: 48px;
+            font-size: 36px;
             color: red;
         }
         #gameOverScreen p {
             font-size: 24px;
         }
         #gameOverScreen button {
-            font-size: 24px;
+            font-size: 20px;
             padding: 10px 20px;
             margin: 10px;
         }
-        /* Styles for virtual buttons */
-        .control-buttons {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 200px;
-            display: flex;
-            justify-content: space-between;
-        }
-        .control-button {
-            width: 60px;
-            height: 60px;
-            background-color: #555;
-            color: #fff;
-            font-size: 24px;
-            border: none;
-            border-radius: 10px;
-            opacity: 0.7;
-        }
-        .control-button:active {
-            opacity: 1;
-        }
-        /* Hide controls on larger screens */
-        @media (min-width: 600px) {
-            .control-buttons {
-                display: none;
-            }
+        /* Make canvas responsive */
+        #gameCanvas {
+            background: #fff;
+            display: block;
+            margin: 0 auto;
+            border: 2px solid #000;
+            touch-action: none; /* Prevent touch actions */
         }
     </style>
 </head>
 <body>
     <h1>Snake Game</h1>
     <p id="score">Score: 0</p>
-    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <canvas id="gameCanvas"></canvas>
     <button id="startButton">Start Game</button>
 
     <!-- Game Over Screen -->
@@ -89,14 +72,6 @@
     <audio id="backgroundMusic" src="Felipe Ortiz.mp3" loop></audio>
     <audio id="gameOverSound" src="gameover.wav"></audio>
 
-    <!-- Virtual control buttons -->
-    <div class="control-buttons">
-        <button class="control-button" id="leftButton">◀️</button>
-        <button class="control-button" id="upButton">▲</button>
-        <button class="control-button" id="downButton">▼</button>
-        <button class="control-button" id="rightButton">▶️</button>
-    </div>
-
     <script>
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
@@ -106,7 +81,7 @@
         const backgroundMusic = document.getElementById('backgroundMusic');
         const gameOverSound = document.getElementById('gameOverSound');
 
-        const box = 20;
+        let box; // Size of one box (will be set based on canvas size)
         let snake;
         let direction;
         let food;
@@ -114,18 +89,38 @@
         let game; // Declare game variable
 
         function initGame() {
+            // Set canvas size
+            adjustCanvasSize();
+
+            box = canvas.width / 20; // We will have 20 boxes in width and height
+
             snake = [];
             snake[0] = { x: 10 * box, y: 10 * box };
             direction = 'RIGHT';
-            food = {
-                x: Math.floor(Math.random() * 20) * box,
-                y: Math.floor(Math.random() * 20) * box
-            };
+            generateFood();
             score = 0;
             scoreElement.textContent = 'Score: ' + score;
             document.addEventListener('keydown', changeDirection);
             addSwipeListeners(); // Add swipe listeners
             game = setInterval(draw, 100);
+        }
+
+        function adjustCanvasSize() {
+            let viewportWidth = window.innerWidth;
+            let viewportHeight = window.innerHeight;
+
+            // We want the canvas to be square and as big as possible
+            let canvasSize = Math.min(viewportWidth, viewportHeight) * 0.8; // 80% of viewport size
+
+            // Limit maximum size
+            canvasSize = Math.min(canvasSize, 600);
+
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+
+            // Adjust canvas style to match
+            canvas.style.width = canvasSize + 'px';
+            canvas.style.height = canvasSize + 'px';
         }
 
         function changeDirection(event) {
@@ -141,27 +136,13 @@
             }
         }
 
-        // Virtual button controls
-        document.getElementById('leftButton').addEventListener('click', function() {
-            if (direction != 'RIGHT') direction = 'LEFT';
-        });
-        document.getElementById('upButton').addEventListener('click', function() {
-            if (direction != 'DOWN') direction = 'UP';
-        });
-        document.getElementById('downButton').addEventListener('click', function() {
-            if (direction != 'UP') direction = 'DOWN';
-        });
-        document.getElementById('rightButton').addEventListener('click', function() {
-            if (direction != 'LEFT') direction = 'RIGHT';
-        });
-
         // Swipe controls
         let touchStartX = 0;
         let touchStartY = 0;
-        let touchEndX = 0;
-        let touchEndY = 0;
 
-        function handleGesture() {
+        function handleGesture(e) {
+            let touchEndX = e.changedTouches[0].clientX;
+            let touchEndY = e.changedTouches[0].clientY;
             let xDiff = touchEndX - touchStartX;
             let yDiff = touchEndY - touchStartY;
 
@@ -182,20 +163,24 @@
 
         function addSwipeListeners() {
             canvas.addEventListener('touchstart', function(e) {
-                touchStartX = e.changedTouches[0].screenX;
-                touchStartY = e.changedTouches[0].screenY;
+                e.preventDefault(); // Prevent default touch behavior
+                touchStartX = e.changedTouches[0].clientX;
+                touchStartY = e.changedTouches[0].clientY;
+            }, false);
+
+            canvas.addEventListener('touchmove', function(e) {
+                e.preventDefault(); // Prevent scrolling
             }, false);
 
             canvas.addEventListener('touchend', function(e) {
-                touchEndX = e.changedTouches[0].screenX;
-                touchEndY = e.changedTouches[0].screenY;
-                handleGesture();
+                e.preventDefault(); // Prevent default touch behavior
+                handleGesture(e);
             }, false);
         }
 
         function draw() {
             ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, 400, 400);
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             for (let i = 0; i < snake.length; i++) {
                 ctx.fillStyle = (i == 0) ? '#000' : '#555';
@@ -218,10 +203,7 @@
             if (snakeX == food.x && snakeY == food.y) {
                 score++;
                 scoreElement.textContent = 'Score: ' + score;
-                food = {
-                    x: Math.floor(Math.random() * 20) * box,
-                    y: Math.floor(Math.random() * 20) * box
-                };
+                generateFood();
             } else {
                 snake.pop();
             }
@@ -229,7 +211,7 @@
             let newHead = { x: snakeX, y: snakeY };
 
             // Game over conditions
-            if (snakeX < 0 || snakeX >= 400 || snakeY < 0 || snakeY >= 400 || collision(newHead, snake)) {
+            if (snakeX < 0 || snakeX >= canvas.width || snakeY < 0 || snakeY >= canvas.height || collision(newHead, snake)) {
                 showGameOverScreen();
                 return;
             }
@@ -246,10 +228,21 @@
             return false;
         }
 
+        function generateFood() {
+            let gridSize = canvas.width / box;
+            food = {
+                x: Math.floor(Math.random() * gridSize) * box,
+                y: Math.floor(Math.random() * gridSize) * box
+            };
+        }
+
         function showGameOverScreen() {
             clearInterval(game);
             backgroundMusic.pause();
             gameOverSound.play();
+
+            // Remove event listeners
+            document.removeEventListener('keydown', changeDirection);
 
             // Hide game elements
             canvas.style.display = 'none';
@@ -258,9 +251,6 @@
             // Show game over screen
             const gameOverScreen = document.getElementById('gameOverScreen');
             gameOverScreen.style.display = 'block';
-
-            // Hide control buttons
-            document.querySelector('.control-buttons').style.display = 'none';
 
             // Display final score
             const finalScoreElement = document.getElementById('finalScore');
@@ -271,7 +261,9 @@
 
         startButton.addEventListener('click', function() {
             startButton.style.display = 'none'; // Hide the start button
-            backgroundMusic.play();
+            backgroundMusic.play().catch(function(error) {
+                console.log('Background music play was prevented:', error);
+            });
             initGame();
         });
 
@@ -286,12 +278,11 @@
             scoreElement.style.display = 'block';
             scoreElement.textContent = 'Score: ' + score;
 
-            // Show control buttons
-            document.querySelector('.control-buttons').style.display = 'flex';
-
             // Restart background music
             backgroundMusic.currentTime = 0;
-            backgroundMusic.play();
+            backgroundMusic.play().catch(function(error) {
+                console.log('Background music play was prevented:', error);
+            });
 
             // Initialize game
             initGame();
@@ -300,6 +291,12 @@
         document.getElementById('quitButton').addEventListener('click', function() {
             // Close the game (reloads the page)
             location.reload();
+        });
+
+        // Adjust canvas size when the window is resized
+        window.addEventListener('resize', function() {
+            adjustCanvasSize();
+            box = canvas.width / 20;
         });
     </script>
 </body>
