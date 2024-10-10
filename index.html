@@ -1,311 +1,307 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <title>Snake Game</title>
-    <style>
-        body {
-            text-align: center;
-            font-family: Arial, sans-serif;
-            background-color: #eee;
-            margin: 0;
-            padding: 0;
-            overflow: hidden; /* Prevent scrolling */
-        }
-        #score {
-            font-size: 24px;
-            margin: 10px 0;
-        }
-        #startButton {
-            font-size: 24px;
-            padding: 10px 20px;
-            margin-top: 20px;
-        }
-        #gameOverScreen {
-            display: none;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.9);
-            padding: 20px;
-            border: 2px solid #000;
-            border-radius: 10px;
-        }
-        #gameOverScreen h2 {
-            font-size: 36px;
-            color: red;
-        }
-        #gameOverScreen p {
-            font-size: 24px;
-        }
-        #gameOverScreen button {
-            font-size: 20px;
-            padding: 10px 20px;
-            margin: 10px;
-        }
-        /* Make canvas responsive */
-        #gameCanvas {
-            background: #fff;
-            display: block;
-            margin: 0 auto;
-            border: 2px solid #000;
-            touch-action: none; /* Prevent touch actions */
-        }
-    </style>
+<meta charset="UTF-8">
+<title>Snake Game</title>
+<style>
+canvas {
+background: #fff;
+display: block;
+margin: 0 auto;
+border: 1px solid #000;
+}
+body {
+text-align: center;
+font-family: Arial, sans-serif;
+background-color: #eee;
+margin: 0;
+padding: 0;
+}
+#score {
+font-size: 24px;
+}
+#startButton {
+font-size: 24px;
+padding: 10px 20px;
+margin-top: 20px;
+}
+#gameOverScreen {
+display: none;
+}
+#gameOverScreen h2 {
+font-size: 48px;
+color: red;
+}
+#gameOverScreen p {
+font-size: 24px;
+}
+#gameOverScreen button {
+font-size: 24px;
+padding: 10px 20px;
+margin: 10px;
+}
+/* Styles for virtual buttons */
+.control-buttons {
+position: fixed;
+bottom: 20px;
+left: 50%;
+transform: translateX(-50%);
+width: 200px;
+display: flex;
+justify-content: space-between;
+}
+.control-button {
+width: 60px;
+height: 60px;
+background-color: #555;
+color: #fff;
+font-size: 24px;
+border: none;
+border-radius: 10px;
+opacity: 0.7;
+}
+.control-button:active {
+opacity: 1;
+}
+/* Hide controls on larger screens */
+@media (min-width: 600px) {
+.control-buttons {
+display: none;
+}
+}
+</style>
 </head>
 <body>
-    <h1>Snake Game</h1>
-    <p id="score">Score: 0</p>
-    <canvas id="gameCanvas"></canvas>
-    <button id="startButton">Start Game</button>
+<h1>Snake Game</h1>
+<p id="score">Score: 0</p>
+<canvas id="gameCanvas" width="400" height="400"></canvas>
+<button id="startButton">Start Game</button>
 
-    <!-- Game Over Screen -->
-    <div id="gameOverScreen">
-        <h2>Game Over</h2>
-        <p id="finalScore"></p>
-        <button id="retryButton">Try Again</button>
-        <button id="quitButton">Quit</button>
-    </div>
+<!-- Game Over Screen -->
+<div id="gameOverScreen">
+<h2>Game Over</h2>
+<p id="finalScore"></p>
+<button id="retryButton">Try Again</button>
+<button id="quitButton">Quit</button>
+</div>
 
-    <!-- Include audio elements -->
-    <audio id="backgroundMusic" src="felipe_ortiz.mp3" preload="auto" loop></audio>
-    <audio id="gameOverSound" src="gameover.wav" preload="auto"></audio>
+<!-- Include audio elements -->
+    <audio id="backgroundMusic" src="Felipe Ortiz.mp3" loop></audio>
+    <audio id="backgroundMusic" src="Felipe Ortix.mp3" loop></audio>
+<audio id="gameOverSound" src="gameover.wav"></audio>
 
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const scoreElement = document.getElementById('score');
+<!-- Virtual control buttons -->
+<div class="control-buttons">
+<button class="control-button" id="leftButton">◀️</button>
+<button class="control-button" id="upButton">▲</button>
+<button class="control-button" id="downButton">▼</button>
+<button class="control-button" id="rightButton">▶️</button>
+</div>
 
-        // Audio elements
-        const backgroundMusic = document.getElementById('backgroundMusic');
-        const gameOverSound = document.getElementById('gameOverSound');
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreElement = document.getElementById('score');
 
-        let box; // Size of one box (will be set based on canvas size)
-        let snake;
-        let direction;
-        let food;
-        let score;
-        let game; // Declare game variable
+// Audio elements
+const backgroundMusic = document.getElementById('backgroundMusic');
+const gameOverSound = document.getElementById('gameOverSound');
 
-        function initGame() {
-            // Set canvas size
-            adjustCanvasSize();
+const box = 20;
+let snake;
+let direction;
+let food;
+let score;
+let game; // Declare game variable
 
-            box = canvas.width / 20; // We will have 20 boxes in width and height
+function initGame() {
+snake = [];
+snake[0] = { x: 10 * box, y: 10 * box };
+direction = 'RIGHT';
+food = {
+x: Math.floor(Math.random() * 20) * box,
+y: Math.floor(Math.random() * 20) * box
+};
+score = 0;
+scoreElement.textContent = 'Score: ' + score;
+document.addEventListener('keydown', changeDirection);
+addSwipeListeners(); // Add swipe listeners
+game = setInterval(draw, 100);
+}
 
-            snake = [];
-            snake[0] = { x: 10 * box, y: 10 * box };
-            direction = 'RIGHT';
-            generateFood();
-            score = 0;
-            scoreElement.textContent = 'Score: ' + score;
-            document.addEventListener('keydown', changeDirection);
-            addSwipeListeners(); // Add swipe listeners
-            game = setInterval(draw, 100);
-        }
+function changeDirection(event) {
+let key = event.keyCode;
+if (key == 37 && direction != 'RIGHT') {
+direction = 'LEFT';
+} else if (key == 38 && direction != 'DOWN') {
+direction = 'UP';
+} else if (key == 39 && direction != 'LEFT') {
+direction = 'RIGHT';
+} else if (key == 40 && direction != 'UP') {
+direction = 'DOWN';
+}
+}
 
-        function adjustCanvasSize() {
-            let viewportWidth = window.innerWidth;
-            let viewportHeight = window.innerHeight;
+// Virtual button controls
+document.getElementById('leftButton').addEventListener('click', function() {
+if (direction != 'RIGHT') direction = 'LEFT';
+});
+document.getElementById('upButton').addEventListener('click', function() {
+if (direction != 'DOWN') direction = 'UP';
+});
+document.getElementById('downButton').addEventListener('click', function() {
+if (direction != 'UP') direction = 'DOWN';
+});
+document.getElementById('rightButton').addEventListener('click', function() {
+if (direction != 'LEFT') direction = 'RIGHT';
+});
 
-            // We want the canvas to be square and as big as possible
-            let canvasSize = Math.min(viewportWidth, viewportHeight) * 0.8; // 80% of viewport size
+// Swipe controls
+let touchStartX = 0;
+let touchStartY = 0;
+let touchEndX = 0;
+let touchEndY = 0;
 
-            // Limit maximum size
-            canvasSize = Math.min(canvasSize, 600);
+function handleGesture() {
+let xDiff = touchEndX - touchStartX;
+let yDiff = touchEndY - touchStartY;
 
-            canvas.width = canvasSize;
-            canvas.height = canvasSize;
+if (Math.abs(xDiff) > Math.abs(yDiff)) {
+if (xDiff > 0 && direction != 'LEFT') {
+direction = 'RIGHT';
+} else if (xDiff < 0 && direction != 'RIGHT') {
+direction = 'LEFT';
+}
+} else {
+if (yDiff > 0 && direction != 'UP') {
+direction = 'DOWN';
+} else if (yDiff < 0 && direction != 'DOWN') {
+direction = 'UP';
+}
+}
+}
 
-            // Adjust canvas style to match
-            canvas.style.width = canvasSize + 'px';
-            canvas.style.height = canvasSize + 'px';
-        }
+function addSwipeListeners() {
+canvas.addEventListener('touchstart', function(e) {
+touchStartX = e.changedTouches[0].screenX;
+touchStartY = e.changedTouches[0].screenY;
+}, false);
 
-        function changeDirection(event) {
-            let key = event.keyCode;
-            if (key == 37 && direction != 'RIGHT') {
-                direction = 'LEFT';
-            } else if (key == 38 && direction != 'DOWN') {
-                direction = 'UP';
-            } else if (key == 39 && direction != 'LEFT') {
-                direction = 'RIGHT';
-            } else if (key == 40 && direction != 'UP') {
-                direction = 'DOWN';
-            }
-        }
+canvas.addEventListener('touchend', function(e) {
+touchEndX = e.changedTouches[0].screenX;
+touchEndY = e.changedTouches[0].screenY;
+handleGesture();
+}, false);
+}
 
-        // Swipe controls
-        let touchStartX = 0;
-        let touchStartY = 0;
+function draw() {
+ctx.fillStyle = '#fff';
+ctx.fillRect(0, 0, 400, 400);
 
-        function handleGesture(e) {
-            let touchEndX = e.changedTouches[0].clientX;
-            let touchEndY = e.changedTouches[0].clientY;
-            let xDiff = touchEndX - touchStartX;
-            let yDiff = touchEndY - touchStartY;
+for (let i = 0; i < snake.length; i++) {
+ctx.fillStyle = (i == 0) ? '#000' : '#555';
+ctx.fillRect(snake[i].x, snake[i].y, box, box);
+ctx.strokeStyle = '#fff';
+ctx.strokeRect(snake[i].x, snake[i].y, box, box);
+}
 
-            if (Math.abs(xDiff) > Math.abs(yDiff)) {
-                if (xDiff > 0 && direction != 'LEFT') {
-                    direction = 'RIGHT';
-                } else if (xDiff < 0 && direction != 'RIGHT') {
-                    direction = 'LEFT';
-                }
-            } else {
-                if (yDiff > 0 && direction != 'UP') {
-                    direction = 'DOWN';
-                } else if (yDiff < 0 && direction != 'DOWN') {
-                    direction = 'UP';
-                }
-            }
-        }
+ctx.fillStyle = 'red';
+ctx.fillRect(food.x, food.y, box, box);
 
-        function addSwipeListeners() {
-            canvas.addEventListener('touchstart', function(e) {
-                e.preventDefault(); // Prevent default touch behavior
-                touchStartX = e.changedTouches[0].clientX;
-                touchStartY = e.changedTouches[0].clientY;
-            }, false);
+let snakeX = snake[0].x;
+let snakeY = snake[0].y;
 
-            canvas.addEventListener('touchmove', function(e) {
-                e.preventDefault(); // Prevent scrolling
-            }, false);
+if (direction == 'LEFT') snakeX -= box;
+if (direction == 'UP') snakeY -= box;
+if (direction == 'RIGHT') snakeX += box;
+if (direction == 'DOWN') snakeY += box;
 
-            canvas.addEventListener('touchend', function(e) {
-                e.preventDefault(); // Prevent default touch behavior
-                handleGesture(e);
-            }, false);
-        }
+if (snakeX == food.x && snakeY == food.y) {
+score++;
+scoreElement.textContent = 'Score: ' + score;
+food = {
+x: Math.floor(Math.random() * 20) * box,
+y: Math.floor(Math.random() * 20) * box
+};
+} else {
+snake.pop();
+}
 
-        function draw() {
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+let newHead = { x: snakeX, y: snakeY };
 
-            for (let i = 0; i < snake.length; i++) {
-                ctx.fillStyle = (i == 0) ? '#000' : '#555';
-                ctx.fillRect(snake[i].x, snake[i].y, box, box);
-                ctx.strokeStyle = '#fff';
-                ctx.strokeRect(snake[i].x, snake[i].y, box, box);
-            }
+// Game over conditions
+if (snakeX < 0 || snakeX >= 400 || snakeY < 0 || snakeY >= 400 || collision(newHead, snake)) {
+showGameOverScreen();
+return;
+}
 
-            ctx.fillStyle = 'red';
-            ctx.fillRect(food.x, food.y, box, box);
+snake.unshift(newHead);
+}
 
-            let snakeX = snake[0].x;
-            let snakeY = snake[0].y;
+function collision(head, array) {
+for (let i = 0; i < array.length; i++) {
+if (head.x == array[i].x && head.y == array[i].y) {
+return true;
+}
+}
+return false;
+}
 
-            if (direction == 'LEFT') snakeX -= box;
-            if (direction == 'UP') snakeY -= box;
-            if (direction == 'RIGHT') snakeX += box;
-            if (direction == 'DOWN') snakeY += box;
+function showGameOverScreen() {
+clearInterval(game);
+backgroundMusic.pause();
+gameOverSound.play();
 
-            if (snakeX == food.x && snakeY == food.y) {
-                score++;
-                scoreElement.textContent = 'Score: ' + score;
-                generateFood();
-            } else {
-                snake.pop();
-            }
+// Hide game elements
+canvas.style.display = 'none';
+scoreElement.style.display = 'none';
 
-            let newHead = { x: snakeX, y: snakeY };
+// Show game over screen
+const gameOverScreen = document.getElementById('gameOverScreen');
+gameOverScreen.style.display = 'block';
 
-            // Game over conditions
-            if (snakeX < 0 || snakeX >= canvas.width || snakeY < 0 || snakeY >= canvas.height || collision(newHead, snake)) {
-                showGameOverScreen();
-                return;
-            }
+// Hide control buttons
+document.querySelector('.control-buttons').style.display = 'none';
 
-            snake.unshift(newHead);
-        }
+// Display final score
+const finalScoreElement = document.getElementById('finalScore');
+finalScoreElement.textContent = 'Your score: ' + score;
+}
 
-        function collision(head, array) {
-            for (let i = 0; i < array.length; i++) {
-                if (head.x == array[i].x && head.y == array[i].y) {
-                    return true;
-                }
-            }
-            return false;
-        }
+const startButton = document.getElementById('startButton');
 
-        function generateFood() {
-            let gridSize = canvas.width / box;
-            food = {
-                x: Math.floor(Math.random() * gridSize) * box,
-                y: Math.floor(Math.random() * gridSize) * box
-            };
-        }
+startButton.addEventListener('click', function() {
+startButton.style.display = 'none'; // Hide the start button
+backgroundMusic.play();
+initGame();
+});
 
-        function showGameOverScreen() {
-            clearInterval(game);
-            backgroundMusic.pause();
-            gameOverSound.currentTime = 0;
-            gameOverSound.play().catch(function(error) {
-                console.log('Game Over sound play was prevented:', error);
-            });
+// Retry and Quit buttons
+document.getElementById('retryButton').addEventListener('click', function() {
+// Reset the game
+const gameOverScreen = document.getElementById('gameOverScreen');
+gameOverScreen.style.display = 'none';
 
-            // Remove event listeners
-            document.removeEventListener('keydown', changeDirection);
+// Show game elements
+canvas.style.display = 'block';
+scoreElement.style.display = 'block';
+scoreElement.textContent = 'Score: ' + score;
 
-            // Hide game elements
-            canvas.style.display = 'none';
-            scoreElement.style.display = 'none';
+// Show control buttons
+document.querySelector('.control-buttons').style.display = 'flex';
 
-            // Show game over screen
-            const gameOverScreen = document.getElementById('gameOverScreen');
-            gameOverScreen.style.display = 'block';
+// Restart background music
+backgroundMusic.currentTime = 0;
+backgroundMusic.play();
 
-            // Display final score
-            const finalScoreElement = document.getElementById('finalScore');
-            finalScoreElement.textContent = 'Your score: ' + score;
-        }
+// Initialize game
+initGame();
+});
 
-        const startButton = document.getElementById('startButton');
-
-        startButton.addEventListener('click', function() {
-            startButton.style.display = 'none'; // Hide the start button
-            backgroundMusic.currentTime = 0;
-            backgroundMusic.play().then(() => {
-                console.log('Background music started');
-            }).catch(function(error) {
-                console.log('Background music play was prevented:', error);
-            });
-            initGame();
-        });
-
-        // Retry and Quit buttons
-        document.getElementById('retryButton').addEventListener('click', function() {
-            // Reset the game
-            const gameOverScreen = document.getElementById('gameOverScreen');
-            gameOverScreen.style.display = 'none';
-
-            // Show game elements
-            canvas.style.display = 'block';
-            scoreElement.style.display = 'block';
-            scoreElement.textContent = 'Score: ' + score;
-
-            // Restart background music
-            backgroundMusic.currentTime = 0;
-            backgroundMusic.play().then(() => {
-                console.log('Background music restarted');
-            }).catch(function(error) {
-                console.log('Background music play was prevented:', error);
-            });
-
-            // Initialize game
-            initGame();
-        });
-
-        document.getElementById('quitButton').addEventListener('click', function() {
-            // Close the game (reloads the page)
-            location.reload();
-        });
-
-        // Adjust canvas size when the window is resized
-        window.addEventListener('resize', function() {
-            adjustCanvasSize();
-            box = canvas.width / 20;
-        });
-    </script>
+document.getElementById('quitButton').addEventListener('click', function() {
+// Close the game (reloads the page)
+location.reload();
+});
+</script>
 </body>
 </html>
